@@ -44,8 +44,12 @@ cd firstmate-toolbox-main
 10. Firstmate config: `config/backend` = `herdr` (herdr manages the workers),
     `config/crew-harness` and `config/secondmate-harness` = `pi` (set
     `FIRSTMATE_PI_MODEL` to pin a model for secondmates, e.g. `FIRSTMATE_PI_MODEL=anthropic/claude-sonnet-4-5 ./bootstrap.sh`).
-11. This toolbox's splash + launcher + herdr service.
-12. Any personal skills from `skills/` → `~/.config/opencode/skills/`.
+11. **Matt Pocock's pi skills** (`mattpocock/skills`) installed for every Pi
+    session into `~/.pi/agent/skills/`: `wayfinder`, `to-spec`, `to-tickets`,
+    `implement`, `code-review`, `tdd`, `grilling`, `grill-me`, `research`,
+    `prototype`, `triage`, `wizard`, `handoff`, and 17 more.
+12. This toolbox's splash + launcher + herdr service.
+13. Any personal skills from `skills/` → `~/.config/opencode/skills/`.
 
 At the end it launches the API-keys prompt (or tells you to run it manually):
 

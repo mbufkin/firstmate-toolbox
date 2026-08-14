@@ -139,6 +139,31 @@ if [[ ! -f "$FM_DIR/config/secondmate-harness" ]]; then
   info "firstmate secondmate harness set to pi${FIRSTMATE_PI_MODEL:+ ($FIRSTMATE_PI_MODEL)}"
 fi
 
+# ---------------------------------------------------- pi skills (matt pocock)
+# Matt Pocock's engineering + productivity skills (wayfinder, to-spec, to-tickets,
+# implement, code-review, tdd, grilling, ...) installed for every Pi session via
+# the user skills dir. See https://github.com/mattpocock/skills
+PI_SKILLS="$HOME/.pi/agent/skills"
+mkdir -p "$PI_SKILLS"
+if [[ -d "$PI_SKILLS/wayfinder" ]]; then
+  info "matt pocock pi skills already installed (wayfinder present)"
+else
+  log "installing matt pocock pi skills (wayfinder, to-spec, code-review, ...)"
+  TMP_SKILLS="$(mktemp -d)"
+  git clone --depth 1 https://github.com/mattpocock/skills "$TMP_SKILLS/mp" >/dev/null 2>&1
+  count=0
+  for d in "$TMP_SKILLS"/mp/skills/engineering/*/ \
+           "$TMP_SKILLS"/mp/skills/productivity/*/ \
+           "$TMP_SKILLS"/mp/skills/misc/*/; do
+    [[ -f "$d/SKILL.md" ]] || continue
+    name=$(basename "$d")
+    cp -r "$d" "$PI_SKILLS/$name"
+    count=$((count + 1))
+  done
+  rm -rf "$TMP_SKILLS"
+  info "installed $count matt pocock pi skills"
+fi
+
 # --------------------------------------------------------- personal skills
 # firstmate's skills ship inside the firstmate repo; personal skills live here
 # in skills/<name>/SKILL.md and are installed to the opencode user skills dir.
