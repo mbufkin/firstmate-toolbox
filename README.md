@@ -1,7 +1,8 @@
 # firstmate-toolbox
 
 Personal setup for running Firstmate (herdr-backed agent) with a cinematic
-ASCII splash opener.
+ASCII splash opener. One GitHub point to pull everything down onto a new
+computer.
 
 ## Contents
 
@@ -12,9 +13,41 @@ ASCII splash opener.
   segment-based renderer). Stars, moon, a sloop gliding on smoothstep easing,
   and a "FIRSTMATE" title reveal over the sea.
 - `herdr.service` — systemd user unit running the herdr background session
-  server (`herdr server`).
+  server (`herdr server`), portable via `%h`.
+- `bootstrap.sh` — full new-machine setup (below).
+- `skills/` — personal opencode skills, installed by bootstrap.
 
-## Install
+## Fresh machine (easy pull-down)
+
+```sh
+curl -fsSL https://github.com/mbufkin/firstmate-toolbox/archive/refs/heads/main.tar.gz | tar -xz
+cd firstmate-toolbox-main
+./bootstrap.sh
+```
+
+`bootstrap.sh` installs, idempotently (existing steps are skipped):
+
+1. Base packages: `git`, `curl`, `jq`, `gnome-terminal`.
+2. Node.js LTS 22 (NodeSource).
+3. GitHub CLI (official apt repo).
+4. opencode (official installer).
+5. herdr (https://herdr.dev) + the user service, enabled.
+6. `treehouse` and `no-mistakes` (official installers).
+7. The axi toolchain (`gh-axi`, `chrome-devtools-axi`, `lavish-axi`,
+   `tasks-axi`, `quota-axi`) with opencode hooks.
+8. The firstmate distro (`kunchenguid/firstmate`) — **this is what brings your
+   skills**: firstmate's 19 skills live in `.agents/skills/` inside that repo.
+9. This toolbox's splash + launcher + herdr service.
+10. Any personal skills from `skills/` → `~/.config/opencode/skills/`.
+
+Then one manual step on a fresh machine:
+
+```sh
+gh auth login
+firstmate        # splash -> opencode in ~/firstmate
+```
+
+## Manual install (existing machine)
 
 ```sh
 mkdir -p ~/.local/bin
