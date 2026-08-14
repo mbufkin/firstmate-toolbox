@@ -48,6 +48,8 @@ cd firstmate-toolbox-main
     session into `~/.pi/agent/skills/`: `wayfinder`, `to-spec`, `to-tickets`,
     `implement`, `code-review`, `tdd`, `grilling`, `grill-me`, `research`,
     `prototype`, `triage`, `wizard`, `handoff`, and 17 more.
+12. The **Vercel `web-design-guidelines` skill** (UI/accessibility design review
+    — the "immaculate web design" one) from `vercel-labs/agent-skills`.
 12. This toolbox's splash + launcher + herdr service.
 13. Any personal skills from `skills/` → `~/.config/opencode/skills/`.
 

@@ -164,6 +164,20 @@ else
   info "installed $count matt pocock pi skills"
 fi
 
+# ------------------------------------------------- vercel web design skill
+# vercel-labs/agent-skills -> web-design-guidelines ("immaculate web design").
+# Self-contained SKILL.md, fetched from skills.sh (542k installs).
+if [[ -d "$PI_SKILLS/web-design-guidelines" ]]; then
+  info "vercel web-design-guidelines skill already installed"
+else
+  log "installing vercel web-design-guidelines skill"
+  TMP_VL="$(mktemp -d)"
+  git clone --depth 1 https://github.com/vercel-labs/agent-skills "$TMP_VL/vl" >/dev/null 2>&1
+  cp -r "$TMP_VL/vl/skills/web-design-guidelines" "$PI_SKILLS/web-design-guidelines"
+  rm -rf "$TMP_VL"
+  info "installed vercel web-design-guidelines skill"
+fi
+
 # --------------------------------------------------------- personal skills
 # firstmate's skills ship inside the firstmate repo; personal skills live here
 # in skills/<name>/SKILL.md and are installed to the opencode user skills dir.
