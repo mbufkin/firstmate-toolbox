@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# firstmate - one command to load the firstmate agent distro with opencode.
-# Preflight: herdr server up, gh authenticated, firstmate repo present, toolchain sane.
-# Usage: firstmate [--check] [opencode args...]
+# firstmate - one command to load the firstmate agent distro with the Pi
+# harness, spawned under the herdr backend (herdr manages the workers).
+# Preflight: herdr server up, gh authenticated, firstmate repo present, pi + keys.
+# Usage: firstmate [--check]            (default harness: pi)
+#        FIRSTMATE_HARNESS=opencode firstmate   (fallback harness)
 set -euo pipefail
 
 FM_DIR="${FIRSTMATE_DIR:-$HOME/firstmate}"
+HARNESS="${FIRSTMATE_HARNESS:-pi}"
 CHECK_ONLY=0
 if [[ "${1:-}" == "--check" ]]; then
   CHECK_ONLY=1
@@ -15,57 +18,83 @@ echo "== firstmate launcher =="
 
 # --- Herdr server ---
 if herdr status 2>&1 | grep -q "status: running"; then
-  echo "[1/4] herdr server: running"
+  echo "[1/5] herdr server: running"
 elif systemctl --user is-active --quiet herdr.service 2>/dev/null; then
-  echo "[1/4] herdr server: service active (socket not up yet)"
+  echo "[1/5] herdr server: service active (socket not up yet)"
   for _ in 1 2 3; do
     sleep 1
     herdr status 2>&1 | grep -q "status: running" && break
   done
-  echo "[1/4] herdr server: running"
+  echo "[1/5] herdr server: running"
 else
-  echo "[1/4] herdr server: not running - starting via systemd..."
+  echo "[1/5] herdr server: not running - starting via systemd..."
   systemctl --user start herdr.service
   for _ in 1 2 3; do
     sleep 1
     herdr status 2>&1 | grep -q "status: running" && break
   done
   herdr status 2>&1 | grep -q "status: running" \
-    && echo "[1/4] herdr server: running" \
-    || echo "[1/4] herdr server: still starting (will self-heal on first spawn)"
+    && echo "[1/5] herdr server: running" \
+    || echo "[1/5] herdr server: still starting (will self-heal on first spawn)"
 fi
 
 # --- GitHub auth ---
 if gh auth status &>/dev/null; then
-  echo "[2/4] github auth: OK ($(gh api user -q .login 2>/dev/null || echo logged-in))"
+  echo "[2/5] github auth: OK ($(gh api user -q .login 2>/dev/null || echo logged-in))"
 else
-  echo "[2/4] github auth: MISSING - run 'gh auth login' before dispatching work"
+  echo "[2/5] github auth: MISSING - run 'gh auth login' before dispatching work"
 fi
 
 # --- firstmate repo ---
 if [[ -d "$FM_DIR/.git" ]]; then
-  echo "[3/4] firstmate repo: OK ($FM_DIR)"
+  echo "[3/5] firstmate repo: OK ($FM_DIR)"
 elif [[ -d "$FM_DIR" ]]; then
-  echo "[3/4] firstmate repo: present but not a git checkout - refusing"
+  echo "[3/5] firstmate repo: present but not a git checkout - refusing"
   exit 1
 else
-  echo "[3/4] firstmate repo: missing - cloning..."
+  echo "[3/5] firstmate repo: missing - cloning..."
   git clone https://github.com/kunchenguid/firstmate "$FM_DIR"
-  echo "[3/4] firstmate repo: cloned"
+  echo "[3/5] firstmate repo: cloned"
 fi
 
 # --- Toolchain preflight (informational) ---
 if [[ -f "$FM_DIR/bin/fm-bootstrap.sh" ]]; then
   issues=$(cd "$FM_DIR" && bash bin/fm-bootstrap.sh 2>&1 || true)
   if [[ -n "$issues" ]]; then
-    echo "[4/4] toolchain notes:"
+    echo "[4/5] toolchain notes:"
     echo "$issues" | sed 's/^/      /'
   else
-    echo "[4/4] toolchain: OK"
+    echo "[4/5] toolchain: OK"
   fi
 else
-  echo "[4/4] toolchain: SKIPPED (bootstrap script not found)"
+  echo "[4/5] toolchain: SKIPPED (bootstrap script not found)"
 fi
+
+# --- Pi harness + keys ---
+case "$HARNESS" in
+  pi)
+    if command -v pi >/dev/null 2>&1; then
+      echo "[5/5] harness: pi ($(pi --version 2>/dev/null | head -1))"
+    else
+      echo "[5/5] harness: pi MISSING - run the toolbox bootstrap.sh"
+    fi
+    if [[ -f "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/auth.json" ]] \
+       && grep -q '"key"' "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/auth.json"; then
+      echo "      api keys: present in ~/.pi/agent/auth.json"
+    elif env | grep -qE '_[A-Z0-9]*API_KEY=|^HF_TOKEN='; then
+      echo "      api keys: present via environment"
+    else
+      echo "      api keys: NONE - run 'setup-keys.sh' first (or /login inside pi)"
+    fi
+    ;;
+  opencode)
+    if command -v opencode >/dev/null 2>&1; then
+      echo "[5/5] harness: opencode (fallback)"
+    else
+      echo "[5/5] harness: opencode MISSING"
+    fi
+    ;;
+esac
 
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
   echo
@@ -73,10 +102,24 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
   exit 0
 fi
 
-command -v opencode >/dev/null 2>&1 || {
-  echo "error: opencode not found on PATH" >&2
-  exit 1
-}
+case "$HARNESS" in
+  pi)
+    command -v pi >/dev/null 2>&1 || {
+      echo "error: pi not found on PATH" >&2
+      exit 1
+    }
+    ;;
+  opencode)
+    command -v opencode >/dev/null 2>&1 || {
+      echo "error: opencode not found on PATH" >&2
+      exit 1
+    }
+    ;;
+  *)
+    echo "error: unknown FIRSTMATE_HARNESS '$HARNESS' (pi or opencode)" >&2
+    exit 1
+    ;;
+esac
 
 # Splash: play the cinematic opener in a new terminal window while firstmate loads.
 if [[ "${FIRSTMATE_NO_SPLASH:-0}" != "1" ]] \
@@ -90,4 +133,10 @@ fi
 echo
 echo "Launching firstmate in $FM_DIR ..."
 cd "$FM_DIR"
+
+# Pi's tracked watcher extensions only load after you approve the per-clone trust
+# prompt on the first run; pi stores that decision in ~/.pi/agent/trust.json.
+if [[ "$HARNESS" == "pi" ]]; then
+  exec pi
+fi
 exec opencode "$@"

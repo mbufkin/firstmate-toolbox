@@ -80,6 +80,16 @@ else
   curl -fsSL https://herdr.dev/install.sh | sh
 fi
 
+# --------------------------------------------------------------------- pi
+# The Pi coding-agent harness (github.com/earendil-works/pi) is the primary
+# firstmate agent here; herdr manages its spawned workers as the backend.
+if have pi; then
+  info "pi $(pi --version 2>/dev/null | head -1) already installed"
+else
+  log "installing pi harness (https://pi.dev)"
+  curl -fsSL https://pi.dev/install.sh | sh
+fi
+
 # ------------------------------------------------------------ toolchain
 if have treehouse; then
   info "treehouse already installed"
@@ -118,6 +128,16 @@ if [[ ! -f "$FM_DIR/config/backend" ]]; then
   printf 'herdr\n' > "$FM_DIR/config/backend"
   info "firstmate backend set to herdr"
 fi
+# herdr manages pi: crewmates and scouts run the pi harness on the herdr backend.
+if [[ ! -f "$FM_DIR/config/crew-harness" ]]; then
+  printf 'pi\n' > "$FM_DIR/config/crew-harness"
+  info "firstmate crew harness set to pi"
+fi
+# secondmate harness: "pi [<model>] [<effort>]"; set FIRSTMATE_PI_MODEL to pin one.
+if [[ ! -f "$FM_DIR/config/secondmate-harness" ]]; then
+  printf 'pi%s\n' "${FIRSTMATE_PI_MODEL:+ $FIRSTMATE_PI_MODEL}" > "$FM_DIR/config/secondmate-harness"
+  info "firstmate secondmate harness set to pi${FIRSTMATE_PI_MODEL:+ ($FIRSTMATE_PI_MODEL)}"
+fi
 
 # --------------------------------------------------------- personal skills
 # firstmate's skills ship inside the firstmate repo; personal skills live here
@@ -151,7 +171,17 @@ if [[ -x "$FM_DIR/bin/fm-bootstrap.sh" ]]; then
 fi
 "$HOME/.local/bin/firstmate" --check || true
 
+# ------------------------------------------------------------- api keys
+if [[ -t 0 ]]; then
+  log "API keys (the only manual step)"
+  bash "$SCRIPT_DIR/setup-keys.sh" || true
+else
+  echo
+  echo "Not interactive - skipping the API-keys prompt. Run it manually:"
+  echo "   $SCRIPT_DIR/setup-keys.sh"
+fi
+
 echo
-echo "Done. One manual step remains on a fresh machine:"
+echo "Done. On a fresh machine finish with:"
 echo "   gh auth login"
 echo "then start the opener with:   firstmate"
