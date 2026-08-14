@@ -35,7 +35,10 @@ cd firstmate-toolbox-main
 3. GitHub CLI (official apt repo).
 4. opencode (fallback harness).
 5. herdr (https://herdr.dev) + the user service, enabled.
-6. **Pi** (https://pi.dev) — the primary harness.
+6. **Pi** (https://pi.dev) — the primary harness. Its default model is pinned to
+   **`opencode/big-pickle`** (free via OpenCode Zen) in `~/.pi/agent/settings.json`
+   (`defaultProvider`/`defaultModel`); override with `FIRSTMATE_PI_MODEL=<provider/model>`.
+   Pi only uses it once the `opencode` provider has a key in `auth.json`.
 7. `treehouse` and `no-mistakes` (official installers).
 8. The axi toolchain (`gh-axi`, `chrome-devtools-axi`, `lavish-axi`,
    `tasks-axi`, `quota-axi`) with opencode hooks.

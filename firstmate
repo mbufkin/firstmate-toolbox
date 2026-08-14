@@ -75,6 +75,10 @@ case "$HARNESS" in
   pi)
     if command -v pi >/dev/null 2>&1; then
       echo "[5/5] harness: pi ($(pi --version 2>/dev/null | head -1))"
+      if [[ -f "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/settings.json" ]] \
+         && jq -e .defaultModel "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/settings.json" &>/dev/null; then
+        echo "      default model: $(jq -r .defaultProvider "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/settings.json")/$(jq -r .defaultModel "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/settings.json")"
+      fi
     else
       echo "[5/5] harness: pi MISSING - run the toolbox bootstrap.sh"
     fi

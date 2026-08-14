@@ -90,6 +90,22 @@ else
   curl -fsSL https://pi.dev/install.sh | sh
 fi
 
+# Pi default model = opencode/big-pickle (free via OpenCode Zen). Pi honors this
+# only once the "opencode" provider has a key in auth.json (add via setup-keys.sh
+# or `pi /login`). Override the model with FIRSTMATE_PI_MODEL=<provider/model>.
+PI_SETTINGS="$HOME/.pi/agent/settings.json"
+if [[ -f "$PI_SETTINGS" ]] && grep -q "big-pickle" "$PI_SETTINGS" 2>/dev/null; then
+  info "pi default model: opencode/big-pickle"
+else
+  PI_MODEL="${FIRSTMATE_PI_MODEL:-opencode/big-pickle}"
+  PI_PROVIDER="${PI_MODEL%/*}"
+  PI_MODEL_ID="${PI_MODEL#*/}"
+  mkdir -p "$HOME/.pi/agent"
+  printf '{\n  "defaultProvider": "%s",\n  "defaultModel": "%s"\n}\n' \
+    "$PI_PROVIDER" "$PI_MODEL_ID" > "$PI_SETTINGS"
+  info "pi default model set: $PI_MODEL"
+fi
+
 # ------------------------------------------------------------ toolchain
 if have treehouse; then
   info "treehouse already installed"
