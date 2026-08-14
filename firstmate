@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# firstmate - one command to load the firstmate agent distro with opencode.
+# Preflight: herdr server up, gh authenticated, firstmate repo present, toolchain sane.
+# Usage: firstmate [--check] [opencode args...]
+set -euo pipefail
+
+FM_DIR="${FIRSTMATE_DIR:-$HOME/firstmate}"
+CHECK_ONLY=0
+if [[ "${1:-}" == "--check" ]]; then
+  CHECK_ONLY=1
+  shift
+fi
+
+echo "== firstmate launcher =="
+
+# --- Herdr server ---
+if herdr status 2>&1 | grep -q "status: running"; then
+  echo "[1/4] herdr server: running"
+elif systemctl --user is-active --quiet herdr.service 2>/dev/null; then
+  echo "[1/4] herdr server: service active (socket not up yet)"
+  for _ in 1 2 3; do
+    sleep 1
+    herdr status 2>&1 | grep -q "status: running" && break
+  done
+  echo "[1/4] herdr server: running"
+else
+  echo "[1/4] herdr server: not running - starting via systemd..."
+  systemctl --user start herdr.service
+  for _ in 1 2 3; do
+    sleep 1
+    herdr status 2>&1 | grep -q "status: running" && break
+  done
+  herdr status 2>&1 | grep -q "status: running" \
+    && echo "[1/4] herdr server: running" \
+    || echo "[1/4] herdr server: still starting (will self-heal on first spawn)"
+fi
+
+# --- GitHub auth ---
+if gh auth status &>/dev/null; then
+  echo "[2/4] github auth: OK ($(gh api user -q .login 2>/dev/null || echo logged-in))"
+else
+  echo "[2/4] github auth: MISSING - run 'gh auth login' before dispatching work"
+fi
+
+# --- firstmate repo ---
+if [[ -d "$FM_DIR/.git" ]]; then
+  echo "[3/4] firstmate repo: OK ($FM_DIR)"
+elif [[ -d "$FM_DIR" ]]; then
+  echo "[3/4] firstmate repo: present but not a git checkout - refusing"
+  exit 1
+else
+  echo "[3/4] firstmate repo: missing - cloning..."
+  git clone https://github.com/kunchenguid/firstmate "$FM_DIR"
+  echo "[3/4] firstmate repo: cloned"
+fi
+
+# --- Toolchain preflight (informational) ---
+if [[ -f "$FM_DIR/bin/fm-bootstrap.sh" ]]; then
+  issues=$(cd "$FM_DIR" && bash bin/fm-bootstrap.sh 2>&1 || true)
+  if [[ -n "$issues" ]]; then
+    echo "[4/4] toolchain notes:"
+    echo "$issues" | sed 's/^/      /'
+  else
+    echo "[4/4] toolchain: OK"
+  fi
+else
+  echo "[4/4] toolchain: SKIPPED (bootstrap script not found)"
+fi
+
+if [[ "$CHECK_ONLY" -eq 1 ]]; then
+  echo
+  echo "Preflight complete."
+  exit 0
+fi
+
+command -v opencode >/dev/null 2>&1 || {
+  echo "error: opencode not found on PATH" >&2
+  exit 1
+}
+
+# Splash: play the cinematic opener in a new terminal window while firstmate loads.
+if [[ "${FIRSTMATE_NO_SPLASH:-0}" != "1" ]] \
+   && command -v firstmate-splash.sh >/dev/null 2>&1 \
+   && command -v gnome-terminal >/dev/null 2>&1; then
+  nohup gnome-terminal --geometry=104x33 --title="firstmate" \
+    -- bash -lc 'firstmate-splash.sh --hold' >/dev/null 2>&1 &
+  echo "[splash] opener playing in a new terminal window"
+fi
+
+echo
+echo "Launching firstmate in $FM_DIR ..."
+cd "$FM_DIR"
+exec opencode "$@"
